@@ -1,0 +1,333 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector"), pgcrypto]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+// ----------------------------------------------------
+// Enums
+// ----------------------------------------------------
+
+enum OrgRole {
+  OWNER
+  AGENT
+  CUSTOMER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  INDEXED
+  FAILED
+}
+
+enum ChatSenderType {
+  CUSTOMER
+  AGENT
+  BOT
+}
+
+enum ChatChannel {
+  PORTAL
+  WIDGET
+}
+
+enum AiFeature {
+  RAG_CHAT
+  TICKET_SUMMARY
+  TICKET_CLASSIFICATION
+  REPLY_SUGGESTION
+  DOCUMENT_EMBEDDING
+}
+
+// ----------------------------------------------------
+// Core Multi-Tenant & Identity Models
+// ----------------------------------------------------
+
+model Organization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(128)
+  slug      String   @unique @db.VarChar(64)
+  domain    String?  @db.VarChar(255)
+  settings  Json     @default("{\"ticketPrefix\": \"SP\", \"aiAutoReply\": false, \"ragConfidenceThreshold\": 0.70}") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  members            OrganizationMember[]
+  tickets            Ticket[]
+  ticketComments     TicketComment[]
+  knowledgeDocuments KnowledgeDocument[]
+  documentChunks     DocumentChunk[]
+  chatConversations  ChatConversation[]
+  chatMessages       ChatMessage[]
+  aiUsageRecords     AiUsageRecord[]
+  auditLogs          AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName     String   @map("full_name") @db.VarChar(128)
+  avatarUrl    String?  @map("avatar_url") @db.VarChar(1024)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  memberships       OrganizationMember[]
+  refreshTokens     RefreshToken[]
+  createdTickets    Ticket[]             @relation("CustomerTickets")
+  assignedTickets   Ticket[]             @relation("AgentTickets")
+  comments          TicketComment[]
+  auditLogs         AuditLog[]
+  aiUsageRecords    AiUsageRecord[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime @map("expires_at")
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model OrganizationMember {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           OrgRole      @default(CUSTOMER)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+  @@map("organization_members")
+}
+
+// ----------------------------------------------------
+// Ticket Management Models
+// ----------------------------------------------------
+
+model Ticket {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  ticketNumber    Int            @map("ticket_number")
+  title           String         @db.VarChar(255)
+  description     String         @db.Text
+  status          TicketStatus   @default(OPEN)
+  priority        TicketPriority @default(MEDIUM)
+  customerId      String         @map("customer_id") @db.Uuid
+  assignedAgentId String?        @map("assigned_agent_id") @db.Uuid
+  tags            String[]       @default([])
+  category        String         @default("General") @db.VarChar(64)
+  sentimentScore  Float?         @map("sentiment_score")
+  aiSummary       String?        @map("ai_summary") @db.Text
+  aiCategory      String?        @map("ai_category") @db.VarChar(64)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  resolvedAt      DateTime?      @map("resolved_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer      User               @relation("CustomerTickets", fields: [customerId], references: [id], onDelete: Restrict)
+  assignedAgent User?              @relation("AgentTickets", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  comments      TicketComment[]
+  conversations ChatConversation[]
+
+  @@unique([organizationId, ticketNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, customerId])
+  @@index([organizationId, assignedAgentId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId       String       @map("ticket_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  authorId       String       @map("author_id") @db.Uuid
+  content        String       @db.Text
+  isInternal     Boolean      @default(false) @map("is_internal")
+  aiGenerated    Boolean      @default(false) @map("ai_generated")
+  metadata       Json?        @db.JsonB
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  ticket       Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt(sort: Asc)])
+  @@index([organizationId, authorId])
+  @@map("ticket_comments")
+}
+
+// ----------------------------------------------------
+// Knowledge Base & Vector Search Models
+// ----------------------------------------------------
+
+model KnowledgeDocument {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  title          String         @db.VarChar(255)
+  sourceUrl      String?        @map("source_url") @db.VarChar(1024)
+  fileKey        String?        @map("file_key") @db.VarChar(512)
+  fileType       String         @map("file_type") @db.VarChar(32)
+  byteSize       Int            @map("byte_size")
+  status         DocumentStatus @default(PENDING)
+  errorMessage   String?        @map("error_message") @db.Text
+  metadata       Json?          @db.JsonB
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chunks       DocumentChunk[]
+
+  @@index([organizationId, status])
+  @@map("knowledge_documents")
+}
+
+model DocumentChunk {
+  id             String                               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId     String                               @map("document_id") @db.Uuid
+  organizationId String                               @map("organization_id") @db.Uuid
+  chunkIndex     Int                                  @map("chunk_index")
+  content        String                               @db.Text
+  tokenCount     Int                                  @map("token_count")
+  embedding      Unsupported("vector(1536)")?
+  metadata       Json?                                @db.JsonB
+  createdAt      DateTime                             @default(now()) @map("created_at")
+
+  document     KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([documentId])
+  @@map("document_chunks")
+}
+
+// ----------------------------------------------------
+// RAG Chatbot Conversations
+// ----------------------------------------------------
+
+model ChatConversation {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  customerId     String?      @map("customer_id") @db.Uuid
+  ticketId       String?      @map("ticket_id") @db.Uuid
+  title          String       @default("New Support Conversation") @db.VarChar(255)
+  channel        ChatChannel  @default(PORTAL)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ticket       Ticket?       @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  messages     ChatMessage[]
+
+  @@index([organizationId, customerId])
+  @@index([ticketId])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String         @map("conversation_id") @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  senderType     ChatSenderType @map("sender_type")
+  content        String         @db.Text
+  citations      Json?          @db.JsonB
+  tokenMetrics   Json?          @map("token_metrics") @db.JsonB
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt(sort: Asc)])
+  @@index([organizationId])
+  @@map("chat_messages")
+}
+
+// ----------------------------------------------------
+// Analytics, AI Metering & Audit Logs
+// ----------------------------------------------------
+
+model AiUsageRecord {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  userId           String?      @map("user_id") @db.Uuid
+  feature          AiFeature
+  provider         String       @db.VarChar(64)
+  model            String       @db.VarChar(64)
+  promptTokens     Int          @map("prompt_tokens")
+  completionTokens Int          @map("completion_tokens")
+  totalTokens      Int          @map("total_tokens")
+  estimatedCostUsd Decimal      @map("estimated_cost_usd") @db.Decimal(10, 6)
+  latencyMs        Int          @map("latency_ms")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, feature])
+  @@map("ai_usage_records")
+}
+
+model AuditLog {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  actorId        String?      @map("actor_id") @db.Uuid
+  action         String       @db.VarChar(128)
+  entityType     String       @map("entity_type") @db.VarChar(64)
+  entityId       String       @map("entity_id") @db.VarChar(64)
+  changes        Json?        @db.JsonB
+  ipAddress      String?      @map("ip_address") @db.VarChar(45)
+  userAgent      String?      @map("user_agent") @db.VarChar(512)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_logs")
+}

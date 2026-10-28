@@ -1,0 +1,29 @@
+{
+  "name": "supportpilot-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-style AI-powered Customer Support and Business Automation SaaS",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -p \"[{name}]\" -n \"backend,frontend\" -c \"cyan.bold,magenta.bold\" \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "run-s build:backend build:frontend",
+    "build:backend": "npm run build -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "test": "run-s test:backend test:frontend",
+    "test:backend": "npm run test -w backend",
+    "test:frontend": "npm run test -w frontend",
+    "lint": "run-s lint:backend lint:frontend",
+    "lint:backend": "npm run lint -w backend",
+    "lint:frontend": "npm run lint -w frontend",
+    "prisma:generate": "npm run prisma:generate -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "npm-run-all2": "^7.0.2"
+  }
+}
