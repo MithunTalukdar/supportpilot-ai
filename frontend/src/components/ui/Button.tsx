@@ -26,11 +26,11 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const variantStyles: Record<ButtonVariant, string> = {
     primary:
-      'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow disabled:opacity-50 disabled:shadow-none',
+      'bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500 text-white shadow-glow hover:shadow-glow-violet border border-violet-400/20 disabled:opacity-50 disabled:shadow-none',
     secondary:
-      'bg-surface-dark hover:bg-slate-700/60 text-slate-200 border border-slate-700 disabled:opacity-50',
+      'bg-navy-800/80 hover:bg-navy-750 text-slate-200 border border-white/10 hover:border-violet-500/30 hover:text-white disabled:opacity-50',
     ghost:
-      'bg-transparent hover:bg-slate-800/60 text-slate-300 hover:text-white disabled:opacity-40',
+      'bg-transparent hover:bg-white/5 text-slate-300 hover:text-white disabled:opacity-40',
     danger:
       'bg-rose-600/80 hover:bg-rose-600 text-white border border-rose-500/30 disabled:opacity-50',
     warning:

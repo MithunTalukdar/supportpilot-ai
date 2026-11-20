@@ -350,7 +350,25 @@ ${contextText ? `RELEVANT_KNOWLEDGE_BASE_CONTEXT:\n${contextText}` : ''}`;
         if (!ticket || ticket.organizationId !== organizationId) {
           throw new NotFoundError('Ticket not found in this organization');
         }
-        const prompt = `TASK: SUGGEST_REPLY\nCustomer Name: ${ticket.customer?.fullName || 'Customer'}\nTicket Title: ${ticket.title}\nTicket Description: ${ticket.description}`;
+        const matchedDocs = devFallbackStore.searchDocuments(
+          organizationId,
+          `${ticket.title} ${ticket.description}`,
+          2
+        );
+        let contextText = '';
+        const fallbackCitations: Array<{ documentTitle: string; snippet: string }> = [];
+
+        if (matchedDocs.length > 0) {
+          matchedDocs.forEach((doc) => {
+            fallbackCitations.push({
+              documentTitle: doc.documentTitle,
+              snippet: doc.snippet,
+            });
+            contextText += `[${doc.documentTitle}]: ${doc.content}\n\n`;
+          });
+        }
+
+        const prompt = `TASK: SUGGEST_REPLY\nCustomer Name: ${ticket.customer?.fullName || 'Customer'}\nTicket Title: ${ticket.title}\nTicket Description: ${ticket.description}${contextText ? `\nRELEVANT_KNOWLEDGE_BASE_CONTEXT:\n${contextText}` : ''}`;
         const completion = await completionProvider.complete(prompt, {
           systemPrompt:
             'You are SupportPilot AI Assistant. Draft a professional, empathetic, and grounded response to the customer. Never invent policies or promise impossible timelines.',
@@ -359,13 +377,13 @@ ${contextText ? `RELEVANT_KNOWLEDGE_BASE_CONTEXT:\n${contextText}` : ''}`;
         return {
           ticketId,
           draftReply: completion.content,
-          citations: [
-            {
-              documentTitle: 'SupportPilot AI Operational Handbook.pdf',
-              snippet: 'Standard procedures for customer inquiries and resolution guidance.',
-            },
-          ],
-          usage: completion.usage,
+            citations: fallbackCitations.length > 0 ? fallbackCitations : [
+              {
+                documentTitle: 'SupportPilot AI Operational Handbook.pdf',
+                snippet: 'Standard procedures for customer inquiries and resolution guidance.',
+              },
+            ],
+            usage: completion.usage,
         };
       }
       throw err;

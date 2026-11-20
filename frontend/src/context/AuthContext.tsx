@@ -16,6 +16,7 @@ interface AuthContextType {
   switchOrg: (orgId: string) => void;
   createOrg: (name: string, slug: string, domain?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setSession: (data: { user: UserProfile; accessToken: string; memberships?: UserMembership[] }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -148,6 +149,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMemberships(data.memberships);
   };
 
+  const setSession = useCallback((data: { user: UserProfile; accessToken: string; memberships?: UserMembership[] }) => {
+    setUser(data.user);
+    setAccessToken(data.accessToken);
+    localStorage.setItem(TOKEN_STORAGE_KEY, data.accessToken);
+    const userMemberships = data.memberships || [];
+    setMemberships(userMemberships);
+    const defaultOrg = userMemberships[0] || null;
+    setActiveOrg(defaultOrg);
+    if (defaultOrg) {
+      localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, defaultOrg.organizationId);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -164,6 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switchOrg,
         createOrg,
         refreshProfile,
+        setSession,
       }}
     >
       {children}

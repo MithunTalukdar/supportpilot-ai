@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext.js';
 import { ErrorBoundary } from './components/common/ErrorBoundary.js';
 import { LandingPage } from './components/landing/LandingPage.js';
 import { AuthGateway } from './components/auth/AuthGateway.js';
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage.js';
 import { OrgOnboarding } from './components/org/OrgOnboarding.js';
 import { AppShell } from './components/layout/AppShell.js';
 import { RoleAwareDashboard } from './components/dashboard/RoleAwareDashboard.js';
@@ -30,6 +31,16 @@ const AppContent: React.FC = () => {
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register' | 'recover'>('login');
   const [authInitialRole, setAuthInitialRole] = useState<'OWNER' | 'AGENT' | 'CUSTOMER' | undefined>(undefined);
 
+  // Check if current URL is an OAuth callback
+  const [inOAuthCallback, setInOAuthCallback] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.location.pathname === '/oauth/callback' ||
+      (window.location.search.includes('code=') &&
+        (window.location.search.includes('provider=') || window.location.search.includes('state=')))
+    );
+  });
+
   const [currentSection, setCurrentSection] = useState<ViewSection>('dashboard');
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState<boolean>(false);
@@ -49,6 +60,31 @@ const AppContent: React.FC = () => {
         <LoadingSpinner size="lg" />
         <p className="text-xs text-slate-400 font-medium">Verifying session credentials and tenant authorization...</p>
       </div>
+    );
+  }
+
+  // Active OAuth Callback Resolution
+  if (inOAuthCallback && !isAuthenticated) {
+    return (
+      <OAuthCallbackPage
+        onSuccess={() => {
+          setInOAuthCallback(false);
+          try {
+            window.history.replaceState({}, '', '/');
+          } catch {
+            // ignore
+          }
+        }}
+        onCancel={() => {
+          setInOAuthCallback(false);
+          setAuthView('auth');
+          try {
+            window.history.replaceState({}, '', '/');
+          } catch {
+            // ignore
+          }
+        }}
+      />
     );
   }
 

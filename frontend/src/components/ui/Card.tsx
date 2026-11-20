@@ -38,7 +38,7 @@ export const CardHeader: React.FC<{
   <div className={clsx('flex items-center justify-between p-5 border-b border-white/5', className)}>
     <div className="flex items-center gap-3">
       {icon && (
-        <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20">
+        <div className="p-2.5 rounded-xl bg-violet-600/15 text-brand-300 border border-violet-500/25 shadow-sm">
           {icon}
         </div>
       )}

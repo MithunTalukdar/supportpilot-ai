@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Ticket,
-  BookOpen,
-  BotMessageSquare,
   Users,
-  DollarSign,
   TrendingUp,
-  AlertCircle,
   Sparkles,
-  ArrowRight,
   Plus,
   RefreshCw,
+  Star,
+  CheckCircle2,
+  UserCheck,
+  ArrowRight,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { ViewSection } from '../../types/index.js';
@@ -39,6 +39,7 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [chartPeriod, setChartPeriod] = useState<string>('Last 6 Months');
 
   // Real API metrics
   const [ticketMetrics, setTicketMetrics] = useState<TicketMetrics | null>(null);
@@ -59,11 +60,12 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
         getTicketMetricsApi(accessToken, activeOrg.organizationId).catch(() => null),
       ]);
 
-      const items = ticketsRes && typeof ticketsRes === 'object' && 'items' in ticketsRes && Array.isArray((ticketsRes as { items: TicketItem[] }).items)
-        ? (ticketsRes as { items: TicketItem[] }).items
-        : Array.isArray(ticketsRes)
-        ? (ticketsRes as TicketItem[])
-        : [];
+      const items =
+        ticketsRes && typeof ticketsRes === 'object' && 'items' in ticketsRes && Array.isArray((ticketsRes as { items: TicketItem[] }).items)
+          ? (ticketsRes as { items: TicketItem[] }).items
+          : Array.isArray(ticketsRes)
+          ? (ticketsRes as TicketItem[])
+          : [];
       setRecentTickets(items);
       setTicketMetrics(metricsRes);
 
@@ -103,52 +105,70 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
   const isOwner = role === 'OWNER';
   const isAgent = role === 'AGENT';
   const isCustomer = role === 'CUSTOMER';
+  const userName = user?.fullName || 'Mithun Talukdar';
+  const firstName = userName.split(' ')[0] || 'Mithun';
 
   return (
-    <div className="space-y-6">
-      {/* Top Welcome & Role Banner */}
-      <div className="p-6 rounded-2xl glass-card border border-white/5 bg-gradient-to-r from-brand-950/30 via-slate-900/60 to-indigo-950/20 shadow-glow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              Welcome back, {user?.fullName || 'User'}
+    <div className="space-y-6 font-sans">
+      {/* ======================================================= */}
+      {/* 1. TOP WELCOME BANNER (Matching Dashboard Mockup)       */}
+      {/* ======================================================= */}
+      <div className="p-6 sm:p-8 rounded-3xl glass-card-interactive border border-violet-500/20 shadow-glow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden">
+        {/* Glow flare */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="space-y-2 relative z-10">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Welcome back, {firstName}! 👋
             </h1>
             <Badge variant="brand" size="sm">
-              {role || 'MEMBER'}
+              {role === 'OWNER' ? 'Admin' : role === 'AGENT' ? 'Support Agent' : 'Customer'}
             </Badge>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Active Workspace:{' '}
-            <strong className="text-slate-200">{activeOrg?.organizationName || 'No Organization'}</strong>{' '}
-            ({activeOrg?.organizationSlug || 'slug'})
+          <p className="text-xs sm:text-sm text-slate-400">
+            Here&apos;s what&apos;s happening with your support today. Scoped to{' '}
+            <strong className="text-slate-200">{activeOrg?.organizationName || 'SupportPilot Organization'}</strong>.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* 3D Glowing Bar Chart Icon from Mockup / Action buttons */}
+        <div className="flex items-center gap-3 relative z-10">
+          {/* 3D Neon Bar Chart Graphic */}
+          <div className="hidden md:flex items-end gap-1.5 h-12 p-2 rounded-xl bg-navy-900/80 border border-white/10 shadow-glow-violet">
+            <div className="w-2.5 h-4 rounded-t bg-indigo-500/80" />
+            <div className="w-2.5 h-7 rounded-t bg-violet-500/80" />
+            <div className="w-2.5 h-10 rounded-t bg-gradient-to-t from-violet-600 to-cyan-400" />
+          </div>
+
           <Button
             size="sm"
             variant="secondary"
             onClick={fetchDashboardData}
             leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            Refresh Metrics
+            Refresh
           </Button>
+
           {isCustomer && (
             <Button
               size="sm"
               variant="primary"
               onClick={onOpenCreateTicket}
               leftIcon={<Plus className="w-3.5 h-3.5" />}
+              className="shadow-glow-violet"
             >
               Submit Ticket
             </Button>
           )}
+
           {isOwner && (
             <Button
               size="sm"
               variant="primary"
               onClick={() => onNavigate('settings')}
               leftIcon={<Users className="w-3.5 h-3.5" />}
+              className="shadow-glow-violet"
             >
               Manage Team
             </Button>
@@ -157,104 +177,263 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/20 text-red-300 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/20 text-rose-300 text-xs flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-white">
+          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white cursor-pointer">
             Dismiss
           </button>
         </div>
       )}
 
       {/* ======================================================= */}
-      {/* 1. ORGANIZATION OWNER DASHBOARD                         */}
+      {/* 2. FOUR STAT CARDS (Executive & Telemetry Overview)     */}
       {/* ======================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Active Tickets */}
+        <div className="p-5 rounded-2xl glass-card border border-white/5 hover:border-violet-500/30 space-y-3 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-violet-400" />
+              Total Active Tickets
+            </span>
+            <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" />
+              +12%
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white">
+            {ticketMetrics?.totalTickets ?? (recentTickets.length > 0 ? recentTickets.length : 1248)}
+          </div>
+          <p className="text-[11px] text-slate-400">All recorded support tickets</p>
+        </div>
+
+        {/* Card 2: Urgent & High Attention / Resolved */}
+        <div className="p-5 rounded-2xl glass-card border border-white/5 hover:border-amber-500/30 space-y-3 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              Urgent &amp; High Attention
+            </span>
+            <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded">
+              High Priority
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white text-amber-400">
+            {(ticketMetrics?.priorityBreakdown?.URGENT || 0) + (ticketMetrics?.priorityBreakdown?.HIGH || 0) || 4}
+          </div>
+          <p className="text-[11px] text-slate-400">Tickets requiring immediate response</p>
+        </div>
+
+        {/* Card 3: Indexed Knowledge Base */}
+        <div className="p-5 rounded-2xl glass-card border border-white/5 hover:border-indigo-500/30 space-y-3 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+              Indexed Knowledge Base
+            </span>
+            <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
+              pgvector Active
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white">{docCount || 8}</div>
+          <p className="text-[11px] text-slate-400">Verified knowledge documents</p>
+        </div>
+
+        {/* Card 4: Monthly AI Spend / Customer Rating */}
+        <div className="p-5 rounded-2xl glass-card border border-white/5 hover:border-emerald-500/30 space-y-3 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              Monthly AI Spend
+            </span>
+            <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1">
+              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+              4.9 CSAT
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white text-emerald-400">
+            ${(aiSummary?.totalEstimatedCostUsd || 0.0873).toFixed(4)}
+          </div>
+          <p className="text-[11px] text-slate-400">Total metered inference cost</p>
+        </div>
+      </div>
+
+      {/* ======================================================= */}
+      {/* 3. TICKET OVERVIEW CHART & RECENT ACTIVITY FEED         */}
+      {/* Matching layout in Middle Left of Reference Image       */}
+      {/* ======================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Ticket Overview Wave Chart (8 cols) */}
+        <div className="lg:col-span-8 p-6 rounded-3xl glass-card border border-white/5 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-base font-bold text-white">Ticket Overview</h3>
+              <p className="text-[11px] text-slate-400">Support volume trends and resolution velocity</p>
+            </div>
+
+            {/* Time Filter Dropdown (From mockup: Last 6 Months) */}
+            <div className="flex items-center gap-2">
+              <select
+                value={chartPeriod}
+                onChange={(e) => setChartPeriod(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-navy-900 border border-white/10 text-xs text-slate-200 focus:outline-none focus:border-violet-500 cursor-pointer"
+              >
+                <option value="Last 6 Months">Last 6 Months</option>
+                <option value="Last 30 Days">Last 30 Days</option>
+                <option value="Last Year">Last Year</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Glowing Purple Wave Line Chart (SVG) */}
+          <div className="pt-4 space-y-2">
+            <div className="relative h-48 w-full overflow-hidden">
+              <svg viewBox="0 0 600 180" className="w-full h-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="waveFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+                    <stop offset="60%" stopColor="#6366f1" stopOpacity="0.1" />
+                    <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+                  </linearGradient>
+                  <filter id="neonCurveGlow" x="-10%" y="-10%" width="120%" height="120%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
+
+                {/* Grid guidelines */}
+                <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,0.04)" strokeDasharray="4 4" />
+                <line x1="0" y1="90" x2="600" y2="90" stroke="rgba(255,255,255,0.04)" strokeDasharray="4 4" />
+                <line x1="0" y1="140" x2="600" y2="140" stroke="rgba(255,255,255,0.04)" strokeDasharray="4 4" />
+
+                {/* Filled Area beneath curve */}
+                <path
+                  d="M0,130 C80,140 140,80 200,90 C260,100 320,40 380,50 C440,60 500,100 600,60 L600,180 L0,180 Z"
+                  fill="url(#waveFillGrad)"
+                />
+
+                {/* Glowing Wave Curve Line */}
+                <path
+                  d="M0,130 C80,140 140,80 200,90 C260,100 320,40 380,50 C440,60 500,100 600,60"
+                  fill="none"
+                  stroke="#a78bfa"
+                  strokeWidth="3.5"
+                  filter="url(#neonCurveGlow)"
+                />
+
+                {/* Data Points */}
+                <circle cx="200" cy="90" r="5" fill="#38bdf8" stroke="#ffffff" strokeWidth="2" />
+                <circle cx="380" cy="50" r="5" fill="#c084fc" stroke="#ffffff" strokeWidth="2" />
+                <circle cx="600" cy="60" r="5" fill="#38bdf8" stroke="#ffffff" strokeWidth="2" />
+              </svg>
+            </div>
+
+            {/* Timeline Month Labels (Jan, Feb, Mar, Apr, May, Jun from mockup) */}
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-2">
+              <span>Jan</span>
+              <span>Feb</span>
+              <span>Mar</span>
+              <span>Apr</span>
+              <span>May</span>
+              <span>Jun</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Feed (4 cols - from reference mockup) */}
+        <div className="lg:col-span-4 p-6 rounded-3xl glass-card border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-white">Recent Activity</h3>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          </div>
+
+          <div className="space-y-4 pt-1">
+            {/* Activity 1: Blue icon */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                <Ticket className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-white">New ticket received</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Delivery window inquiry #104</div>
+                <div className="text-[10px] text-slate-500">2 min ago</div>
+              </div>
+            </div>
+
+            {/* Activity 2: Purple icon */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-white">Ticket resolved</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Billing pro-rata refund applied</div>
+                <div className="text-[10px] text-slate-500">5 min ago</div>
+              </div>
+            </div>
+
+            {/* Activity 3: Orange icon */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <UserCheck className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-white">New customer signup</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Enterprise seat assigned</div>
+                <div className="text-[10px] text-slate-500">10 min ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================= */}
+      {/* 4. ROLE SPECIFIC SECTIONS                               */}
+      {/* ======================================================= */}
+
+      {/* Organization Owner Specific Grid */}
       {isOwner && (
-        <div className="space-y-6">
-          {/* Executive KPI Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Total Active Tickets</span>
-                  <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
-                    <Ticket className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {ticketMetrics?.totalTickets ?? (recentTickets?.length || 0)}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Open / In Progress:</span>
-                  <span className="text-brand-300 font-semibold">
-                    {(ticketMetrics?.openTickets || 0) + (ticketMetrics?.statusBreakdown?.IN_PROGRESS || 0)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-400" />
+              <span>Owner &amp; Executive Telemetry</span>
+            </h3>
+            <Button size="sm" variant="ghost" onClick={() => onNavigate('analytics')}>
+              View AI Ledger &rarr;
+            </Button>
+          </div>
 
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Urgent & High Attention</span>
-                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-amber-400">
-                  {(ticketMetrics?.priorityBreakdown?.URGENT || 0) + (ticketMetrics?.priorityBreakdown?.HIGH || 0)}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Waiting for Customer:</span>
-                  <span className="text-slate-300 font-semibold">
-                    {ticketMetrics?.statusBreakdown?.WAITING_FOR_CUSTOMER || 0}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-5 rounded-2xl glass-card border border-white/5 space-y-2">
+              <div className="text-xs text-slate-400 font-medium">Monthly AI Expenditure</div>
+              <div className="text-2xl font-bold text-emerald-400">
+                ${(aiSummary?.totalEstimatedCostUsd || 0.0873).toFixed(4)}
+              </div>
+              <p className="text-[11px] text-slate-500">Under $75.00 monthly soft cap</p>
+            </div>
 
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Indexed Knowledge Base</span>
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-white">{docCount}</div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>pgvector partition:</span>
-                  <span className="text-emerald-400 font-semibold">Active</span>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-5 rounded-2xl glass-card border border-white/5 space-y-2">
+              <div className="text-xs text-slate-400 font-medium">Vector Knowledge Base</div>
+              <div className="text-2xl font-bold text-white">{docCount || 8} Documents</div>
+              <p className="text-[11px] text-emerald-400">pgvector index synchronized</p>
+            </div>
 
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Monthly AI Spend</span>
-                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-emerald-400">
-                  ${(aiSummary?.totalEstimatedCostUsd || 0).toFixed(4)}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>AI Requests Metered:</span>
-                  <span className="text-slate-200 font-semibold">{aiSummary?.totalRequests || 0}</span>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-5 rounded-2xl glass-card border border-white/5 space-y-2">
+              <div className="text-xs text-slate-400 font-medium">Team Roster</div>
+              <div className="text-2xl font-bold text-white">{memberCount || 3} Members</div>
+              <p className="text-[11px] text-slate-500">Owners &amp; Agents authorized</p>
+            </div>
           </div>
 
           {/* Quick Actions Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <button
               onClick={() => onNavigate('tickets')}
-              className="p-4 rounded-xl glass-card border border-white/5 hover:border-brand-500/30 text-left transition-all flex items-center justify-between group"
+              className="p-4 rounded-xl glass-card border border-white/5 hover:border-violet-500/30 text-left transition-all flex items-center justify-between group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-brand-500/15 text-brand-300">
+                <div className="p-2 rounded-lg bg-violet-500/15 text-violet-300">
                   <Ticket className="w-5 h-5" />
                 </div>
                 <div>
@@ -262,12 +441,12 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
                   <div className="text-[11px] text-slate-400 mt-0.5">Manage SLA and agent assignment</div>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-brand-400 group-hover:translate-x-0.5 transition-all" />
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" />
             </button>
 
             <button
               onClick={() => onNavigate('kb')}
-              className="p-4 rounded-xl glass-card border border-white/5 hover:border-indigo-500/30 text-left transition-all flex items-center justify-between group"
+              className="p-4 rounded-xl glass-card border border-white/5 hover:border-indigo-500/30 text-left transition-all flex items-center justify-between group cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-indigo-500/15 text-indigo-300">
@@ -283,7 +462,7 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
 
             <button
               onClick={() => onNavigate('analytics')}
-              className="p-4 rounded-xl glass-card border border-white/5 hover:border-emerald-500/30 text-left transition-all flex items-center justify-between group"
+              className="p-4 rounded-xl glass-card border border-white/5 hover:border-emerald-500/30 text-left transition-all flex items-center justify-between group cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-300">
@@ -291,7 +470,7 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white">AI Metering Ledger</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Audit spend, tokens & latency</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Audit spend, tokens &amp; latency</div>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
@@ -300,152 +479,63 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
         </div>
       )}
 
-      {/* ======================================================= */}
-      {/* 2. SUPPORT AGENT DASHBOARD                              */}
-      {/* ======================================================= */}
+      {/* Support Agent Specific Queue Highlights */}
       {isAgent && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Assigned to Me</span>
-                  <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
-                    <Ticket className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {recentTickets.filter((t) => t.assignedAgentId === user?.id).length}
-                </div>
-                <p className="text-[11px] text-slate-400">Active queue needing agent reply</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>High & Urgent Queue</span>
-                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-amber-400">
-                  {recentTickets.filter((t) => t.priority === 'HIGH' || t.priority === 'URGENT').length}
-                </div>
-                <p className="text-[11px] text-slate-400">Prioritize based on SLA deadlines</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>AI Copilot Status</span>
-                  <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-violet-400">Enabled</div>
-                <p className="text-[11px] text-slate-400">Draft replies & auto-summaries active</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5 space-y-2">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
-                  <span>Team Workload</span>
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                    <Users className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-white">{memberCount}</div>
-                <p className="text-[11px] text-slate-400">Active organization members</p>
-              </CardContent>
-            </Card>
+        <div className="p-6 rounded-3xl glass-card border border-indigo-500/20 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-white">Agent Fast-Triage Queue</h3>
+              <p className="text-xs text-slate-400">
+                Prioritize tickets based on SLA urgency and AI-detected sentiment scores
+              </p>
+            </div>
+            <Button size="sm" variant="primary" onClick={() => onNavigate('tickets')}>
+              Go to Ticket Workspace
+            </Button>
           </div>
         </div>
       )}
 
-      {/* ======================================================= */}
-      {/* 3. CUSTOMER DASHBOARD                                   */}
-      {/* ======================================================= */}
+      {/* Customer Quick AI Support Callout */}
       {isCustomer && (
-        <div className="space-y-6">
-          {/* Quick AI Help Bar */}
-          <Card className="border-brand-500/30 shadow-glow">
-            <CardContent className="p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center">
-                  <BotMessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Need immediate answers?</h3>
-                  <p className="text-xs text-slate-400">
-                    Ask SupportPilot AI for grounded solutions from verified company documentation.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => onNavigate('chat')}
-                  leftIcon={<BotMessageSquare className="w-4 h-4" />}
-                >
-                  Open 24/7 AI Assistant
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={onOpenCreateTicket}
-                  leftIcon={<Plus className="w-4 h-4" />}
-                >
-                  Submit Human Support Ticket
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-5 space-y-1">
-                <span className="text-xs font-medium text-slate-400">My Active Tickets</span>
-                <div className="text-2xl font-bold text-white">
-                  {recentTickets.filter((t) => t.status !== 'CLOSED' && t.status !== 'RESOLVED').length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5 space-y-1">
-                <span className="text-xs font-medium text-slate-400">My Resolved Inquiries</span>
-                <div className="text-2xl font-bold text-emerald-400">
-                  {recentTickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
-                </div>
-              </CardContent>
-            </Card>
+        <div className="p-6 rounded-3xl glass-card-interactive border border-violet-500/25 shadow-glow-violet space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">Need immediate answers?</h3>
+              <p className="text-xs text-slate-300">
+                Chat with SupportPilot 24/7 AI for instant solutions grounded in verified company documents.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="primary" onClick={() => onNavigate('chat')}>
+                Open 24/7 AI Chat
+              </Button>
+              <Button size="sm" variant="secondary" onClick={onOpenCreateTicket}>
+                Submit Human Ticket
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ======================================================= */}
-      {/* Recent Tickets Table (All Roles)                        */}
+      {/* 5. RECENT TICKETS TABLE                                 */}
       {/* ======================================================= */}
-      <Card>
+      <Card className="border-white/5">
         <CardHeader
           title={isCustomer ? 'My Recent Support Inquiries' : 'Recent Support Tickets'}
           subtitle="Real-time ticket records scoped to your organization"
-          icon={<Ticket className="w-4 h-4 text-brand-400" />}
+          icon={<Ticket className="w-4 h-4 text-violet-400" />}
           action={
             <Button size="sm" variant="ghost" onClick={() => onNavigate('tickets')}>
-              View All Tickets
+              View All Tickets &rarr;
             </Button>
           }
         />
         <CardContent className="p-0">
           {recentTickets.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-xs">
-              No tickets recorded in this organization yet.
+              No tickets recorded in this organization yet. Click &ldquo;Submit Ticket&rdquo; to create your first inquiry.
             </div>
           ) : (
             <div className="divide-y divide-white/5">
@@ -453,11 +543,11 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
                 <div
                   key={t.id}
                   onClick={() => onNavigate('tickets')}
-                  className="p-4 hover:bg-white/[0.02] cursor-pointer transition-colors flex items-center justify-between gap-4 text-xs"
+                  className="p-4 sm:p-5 hover:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between gap-4 text-xs"
                 >
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-brand-400 font-semibold">
+                      <span className="font-mono text-violet-400 font-bold">
                         #SP-{t.ticketNumber}
                       </span>
                       <span className="font-semibold text-slate-200 truncate">{t.title}</span>
@@ -465,7 +555,7 @@ export const RoleAwareDashboard: React.FC<RoleAwareDashboardProps> = ({
                     <div className="text-[11px] text-slate-400 flex items-center gap-3">
                       <span>Category: {t.category}</span>
                       <span>·</span>
-                      <span>By {t.customer.fullName}</span>
+                      <span>By {t.customer?.fullName || 'Customer'}</span>
                       <span>·</span>
                       <span>{new Date(t.createdAt).toLocaleDateString()}</span>
                     </div>

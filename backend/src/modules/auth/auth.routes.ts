@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authController } from './auth.controller.js';
+import { oauthController } from './oauth.controller.js';
 import { validateRequest } from '../../middleware/validate.middleware.js';
 import {
   registerSchema,
@@ -44,5 +45,18 @@ authRouter.patch('/profile', authenticateUser, validateRequest(updateProfileSche
 
 authRouter.post('/change-password', authenticateUser, validateRequest(changePasswordSchema), (req, res, next) => {
   authController.changePassword(req, res).catch(next);
+});
+
+// OAuth 2.0 Integration & Dev Simulation Endpoints
+authRouter.get('/oauth/:provider', (req, res, next) => {
+  oauthController.redirect(req, res).catch(next);
+});
+
+authRouter.get('/oauth/:provider/url', (req, res, next) => {
+  oauthController.getUrl(req, res).catch(next);
+});
+
+authRouter.post('/oauth/callback', (req, res, next) => {
+  oauthController.callback(req, res).catch(next);
 });
 

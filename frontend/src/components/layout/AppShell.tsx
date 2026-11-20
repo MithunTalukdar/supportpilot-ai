@@ -27,13 +27,14 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-surface-darkest">
+    <div className="flex min-h-screen bg-navy-950 bg-radial-glow font-sans selection:bg-violet-600 selection:text-white">
       {/* Sidebar */}
       <Sidebar
         currentSection={currentSection}
         onSelectSection={onSelectSection}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        onProfileClick={onProfileClick}
       />
 
       {/* Main Content Area */}

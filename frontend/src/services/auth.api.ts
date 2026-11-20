@@ -158,3 +158,21 @@ export async function changePasswordApi(
   return handleResponse<{ message: string }>(res);
 }
 
+export function getOAuthStartUrl(provider: 'google' | 'github'): string {
+  return `${API_BASE}/auth/oauth/${provider}`;
+}
+
+export async function getOAuthUrlApi(provider: 'google' | 'github') {
+  const res = await fetch(`${API_BASE}/auth/oauth/${provider}/url`);
+  return handleResponse<{ url: string; isSimulation: boolean }>(res);
+}
+
+export async function oauthCallbackApi(dto: { provider: string; code: string }) {
+  const res = await fetch(`${API_BASE}/auth/oauth/callback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dto),
+  });
+  return handleResponse<{ user: UserProfile; memberships: UserMembership[]; accessToken: string }>(res);
+}
+
